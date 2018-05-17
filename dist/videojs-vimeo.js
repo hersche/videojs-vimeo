@@ -1,22 +1,115 @@
 /**
  * videojs-vimeo
  * @version 3.0.1
- * @copyright 2017 Benoit Tremblay <trembl.ben@gmail.com>
+ * @copyright 2018 Benoit Tremblay <trembl.ben@gmail.com>
  * @license MIT
  */
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.videojsVimeo = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
-/*! @vimeo/player v2.1.0 | (c) 2017 Vimeo | MIT License | https://github.com/vimeo/player.js */
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.videojsVimeo = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function (global,setImmediate){
+/*! @vimeo/player v2.6.1 | (c) 2018 Vimeo | MIT License | https://github.com/vimeo/player.js */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
 	(global.Vimeo = global.Vimeo || {}, global.Vimeo.Player = factory());
 }(this, (function () { 'use strict';
 
-var arrayIndexOfSupport = typeof Array.prototype.indexOf !== 'undefined';
-var postMessageSupport = typeof window.postMessage !== 'undefined';
+/**
+ * @module lib/functions
+ */
 
-if (!arrayIndexOfSupport || !postMessageSupport) {
+/**
+ * Check to see this is a node environment.
+ * @type {Boolean}
+ */
+/* global global */
+var isNode = typeof global !== 'undefined' && {}.toString.call(global) === '[object global]';
+
+/**
+ * Get the name of the method for a given getter or setter.
+ *
+ * @param {string} prop The name of the property.
+ * @param {string} type Either “get” or “set”.
+ * @return {string}
+ */
+function getMethodName(prop, type) {
+    if (prop.indexOf(type.toLowerCase()) === 0) {
+        return prop;
+    }
+
+    return '' + type.toLowerCase() + prop.substr(0, 1).toUpperCase() + prop.substr(1);
+}
+
+/**
+ * Check to see if the object is a DOM Element.
+ *
+ * @param {*} element The object to check.
+ * @return {boolean}
+ */
+function isDomElement(element) {
+    return element instanceof window.HTMLElement;
+}
+
+/**
+ * Check to see whether the value is a number.
+ *
+ * @see http://dl.dropboxusercontent.com/u/35146/js/tests/isNumber.html
+ * @param {*} value The value to check.
+ * @param {boolean} integer Check if the value is an integer.
+ * @return {boolean}
+ */
+function isInteger(value) {
+    // eslint-disable-next-line eqeqeq
+    return !isNaN(parseFloat(value)) && isFinite(value) && Math.floor(value) == value;
+}
+
+/**
+ * Check to see if the URL is a Vimeo url.
+ *
+ * @param {string} url The url string.
+ * @return {boolean}
+ */
+function isVimeoUrl(url) {
+    return (/^(https?:)?\/\/((player|www).)?vimeo.com(?=$|\/)/.test(url)
+    );
+}
+
+/**
+ * Get the Vimeo URL from an element.
+ * The element must have either a data-vimeo-id or data-vimeo-url attribute.
+ *
+ * @param {object} oEmbedParameters The oEmbed parameters.
+ * @return {string}
+ */
+function getVimeoUrl() {
+    var oEmbedParameters = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+    var id = oEmbedParameters.id;
+    var url = oEmbedParameters.url;
+    var idOrUrl = id || url;
+
+    if (!idOrUrl) {
+        throw new Error('An id or url must be passed, either in an options object or as a data-vimeo-id or data-vimeo-url attribute.');
+    }
+
+    if (isInteger(idOrUrl)) {
+        return 'https://vimeo.com/' + idOrUrl;
+    }
+
+    if (isVimeoUrl(idOrUrl)) {
+        return idOrUrl.replace('http:', 'https:');
+    }
+
+    if (id) {
+        throw new TypeError('\u201C' + id + '\u201D is not a valid video id.');
+    }
+
+    throw new TypeError('\u201C' + idOrUrl + '\u201D is not a vimeo.com url.');
+}
+
+var arrayIndexOfSupport = typeof Array.prototype.indexOf !== 'undefined';
+var postMessageSupport = typeof window !== 'undefined' && typeof window.postMessage !== 'undefined';
+
+if (!isNode && (!arrayIndexOfSupport || !postMessageSupport)) {
     throw new Error('Sorry, the Vimeo Player API is not available in this browser.');
 }
 
@@ -631,7 +724,6 @@ var callbackMap = new WeakMap();
 /**
  * Store a callback for a method or event for a player.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {Player} player The player object.
  * @param {string} name The method or event name.
  * @param {(function(this:Player, *): void|{resolve: function, reject: function})} callback
@@ -652,7 +744,6 @@ function storeCallback(player, name, callback) {
 /**
  * Get the callbacks for a player and event or method.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {Player} player The player object.
  * @param {string} name The method or event name
  * @return {function[]}
@@ -665,7 +756,6 @@ function getCallbacks(player, name) {
 /**
  * Remove a stored callback for a method or event for a player.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {Player} player The player object.
  * @param {string} name The method or event name
  * @param {function} [callback] The specific callback to remove.
@@ -718,7 +808,6 @@ function shiftCallbacks(player, name) {
 /**
  * Move callbacks associated with an element to another element.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {HTMLElement} oldElement The old element.
  * @param {HTMLElement} newElement The new element.
  * @return {void}
@@ -731,106 +820,14 @@ function swapCallbacks(oldElement, newElement) {
 }
 
 /**
- * @module lib/functions
- */
-
-/**
- * Get the name of the method for a given getter or setter.
- *
- * @author Brad Dougherty <brad@vimeo.com>
- * @param {string} prop The name of the property.
- * @param {string} type Either “get” or “set”.
- * @return {string}
- */
-function getMethodName(prop, type) {
-    if (prop.indexOf(type.toLowerCase()) === 0) {
-        return prop;
-    }
-
-    return '' + type.toLowerCase() + prop.substr(0, 1).toUpperCase() + prop.substr(1);
-}
-
-/**
- * Check to see if the object is a DOM Element.
- *
- * @author Brad Dougherty <brad@vimeo.com>
- * @param {*} element The object to check.
- * @return {boolean}
- */
-function isDomElement(element) {
-    return element instanceof window.HTMLElement;
-}
-
-/**
- * Check to see whether the value is a number.
- *
- * @author Brad Dougherty <brad@vimeo.com>
- * @see http://dl.dropboxusercontent.com/u/35146/js/tests/isNumber.html
- * @param {*} value The value to check.
- * @param {boolean} integer Check if the value is an integer.
- * @return {boolean}
- */
-function isInteger(value) {
-    // eslint-disable-next-line eqeqeq
-    return !isNaN(parseFloat(value)) && isFinite(value) && Math.floor(value) == value;
-}
-
-/**
- * Check to see if the URL is a Vimeo url.
- *
- * @author Brad Dougherty <brad@vimeo.com>
- * @param {string} url The url string.
- * @return {boolean}
- */
-function isVimeoUrl(url) {
-    return (/^(https?:)?\/\/((player|www).)?vimeo.com(?=$|\/)/.test(url)
-    );
-}
-
-/**
- * Get the Vimeo URL from an element.
- * The element must have either a data-vimeo-id or data-vimeo-url attribute.
- *
- * @author Brad Dougherty <brad@vimeo.com>
- * @param {object} oEmbedParameters The oEmbed parameters.
- * @return {string}
- */
-function getVimeoUrl() {
-    var oEmbedParameters = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-    var id = oEmbedParameters.id;
-    var url = oEmbedParameters.url;
-    var idOrUrl = id || url;
-
-    if (!idOrUrl) {
-        throw new Error('An id or url must be passed, either in an options object or as a data-vimeo-id or data-vimeo-url attribute.');
-    }
-
-    if (isInteger(idOrUrl)) {
-        return 'https://vimeo.com/' + idOrUrl;
-    }
-
-    if (isVimeoUrl(idOrUrl)) {
-        return idOrUrl.replace('http:', 'https:');
-    }
-
-    if (id) {
-        throw new TypeError('\u201C' + id + '\u201D is not a valid video id.');
-    }
-
-    throw new TypeError('\u201C' + idOrUrl + '\u201D is not a vimeo.com url.');
-}
-
-/**
  * @module lib/embed
  */
 
-var oEmbedParameters = ['id', 'url', 'width', 'maxwidth', 'height', 'maxheight', 'portrait', 'title', 'byline', 'color', 'autoplay', 'autopause', 'loop', 'responsive'];
+var oEmbedParameters = ['autopause', 'autoplay', 'background', 'byline', 'color', 'height', 'id', 'loop', 'maxheight', 'maxwidth', 'muted', 'playsinline', 'portrait', 'responsive', 'speed', 'title', 'transparent', 'url', 'width'];
 
 /**
  * Get the 'data-vimeo'-prefixed attributes from an element as an object.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {HTMLElement} element The element.
  * @param {Object} [defaults={}] The default values to use.
  * @return {Object<string, string>}
@@ -852,7 +849,6 @@ function getOEmbedParameters(element) {
 /**
  * Make an oEmbed call for the specified URL.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {string} videoUrl The vimeo.com url for the video.
  * @param {Object} [params] Parameters to pass to oEmbed.
  * @return {Promise}
@@ -907,7 +903,6 @@ function getOEmbedData(videoUrl) {
 /**
  * Create an embed from oEmbed data inside an element.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {object} data The oEmbed data.
  * @param {HTMLElement} element The element to put the iframe in.
  * @return {HTMLIFrameElement} The iframe embed.
@@ -935,7 +930,6 @@ function createEmbed(_ref, element) {
 /**
  * Initialize all embeds within a specific element
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {HTMLElement} [parent=document] The parent element.
  * @return {void}
  */
@@ -972,7 +966,6 @@ function initializeEmbeds() {
 /**
  * Resize embeds when messaged by the player.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {HTMLElement} [parent=document] The parent element.
  * @return {void}
  */
@@ -984,6 +977,7 @@ function resizeEmbeds() {
             return;
         }
 
+        // 'spacechange' is fired only on embeds with cards
         if (!event.data || event.data.event !== 'spacechange') {
             return;
         }
@@ -995,11 +989,10 @@ function resizeEmbeds() {
                 continue;
             }
 
+            // Change padding-bottom of the enclosing div to accommodate
+            // card carousel without distorting aspect ratio
             var space = iframes[i].parentElement;
-
-            if (space && space.className.indexOf('vimeo-space') !== -1) {
-                space.style.paddingBottom = event.data.data[0].bottom + 'px';
-            }
+            space.style.paddingBottom = event.data.data[0].bottom + 'px';
 
             break;
         }
@@ -1033,7 +1026,6 @@ function parseMessageData(data) {
 /**
  * Post a message to the specified target.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {Player} player The player object to use.
  * @param {string} method The API method to call.
  * @param {object} params The parameters to send to the player.
@@ -1064,7 +1056,6 @@ function postMessage(player, method, params) {
 /**
  * Parse the data received from a message event.
  *
- * @author Brad Dougherty <brad@vimeo.com>
  * @param {Player} player The player that received the message.
  * @param {(Object|string)} data The message data. Strings will be parsed into JSON.
  * @return {void}
@@ -1123,7 +1114,6 @@ var Player = function () {
     /**
     * Create a Player.
     *
-    * @author Brad Dougherty <brad@vimeo.com>
     * @param {(HTMLIFrameElement|HTMLElement|string|jQuery)} element A reference to the Vimeo
     *        player iframe, and id, or a jQuery object.
     * @param {object} [options] oEmbed parameters to use when creating an embed in the element.
@@ -1146,7 +1136,7 @@ var Player = function () {
         }
 
         // Find an element by ID
-        if (typeof element === 'string') {
+        if (typeof document !== 'undefined' && typeof element === 'string') {
             element = document.getElementById(element);
         }
 
@@ -1212,7 +1202,10 @@ var Player = function () {
 
                 getOEmbedData(url, params).then(function (data) {
                     var iframe = createEmbed(data, element);
+                    // Overwrite element with the new iframe,
+                    // but store reference to the original element
                     _this.element = iframe;
+                    _this._originalElement = element;
 
                     swapCallbacks(element, iframe);
                     playerMap.set(_this.element, _this);
@@ -1240,7 +1233,6 @@ var Player = function () {
     /**
      * Get a promise for a method.
      *
-     * @author Brad Dougherty <brad@vimeo.com>
      * @param {string} name The API method to call.
      * @param {Object} [args={}] Arguments to send via postMessage.
      * @return {Promise}
@@ -1265,6 +1257,8 @@ var Player = function () {
                     });
 
                     postMessage(_this2, name, args);
+                }).catch(function (error) {
+                    reject(error);
                 });
             });
         }
@@ -1272,7 +1266,6 @@ var Player = function () {
         /**
          * Get a promise for the value of a player property.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} name The property name
          * @return {Promise}
          */
@@ -1302,7 +1295,6 @@ var Player = function () {
         /**
          * Get a promise for setting the value of a player property.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} name The API method to call.
          * @param {mixed} value The value to set.
          * @return {Promise}
@@ -1338,7 +1330,6 @@ var Player = function () {
          * callback with a single parameter, `data`, that contains the data for
          * that event.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} eventName The name of the event.
          * @param {function(*)} callback The function to call when the event fires.
          * @return {void}
@@ -1375,7 +1366,6 @@ var Player = function () {
          * listeners for that event if a `callback` isn’t passed, or only that
          * specific callback if it is passed.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} eventName The name of the event.
          * @param {function} [callback] The specific callback to remove.
          * @return {void}
@@ -1415,7 +1405,6 @@ var Player = function () {
          * the video is successfully loaded, or it will be rejected if it could
          * not be loaded.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {number} id The id of the video.
          * @return {LoadVideoPromise}
          */
@@ -1438,14 +1427,15 @@ var Player = function () {
          * need to wait for `ready` to trigger to begin adding event listeners
          * or calling other methods.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {ReadyPromise}
          */
 
     }, {
         key: 'ready',
         value: function ready() {
-            var readyPromise = readyMap.get(this);
+            var readyPromise = readyMap.get(this) || new npo_src(function (resolve, reject) {
+                reject('Unknown player. Probably unloaded.');
+            });
             return npo_src.resolve(readyPromise);
         }
 
@@ -1462,7 +1452,6 @@ var Player = function () {
         /**
          * Add a cue point to the player.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {number} time The time for the cue point.
          * @param {object} [data] Arbitrary data to be returned with the cue point.
          * @return {AddCuePointPromise}
@@ -1489,7 +1478,6 @@ var Player = function () {
         /**
          * Remove a cue point from the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} id The id of the cue point to remove.
          * @return {RemoveCuePointPromise}
          */
@@ -1525,7 +1513,6 @@ var Player = function () {
          * When set via the API, the track language will not change the viewer’s
          * stored preference.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} language The two‐letter language code.
          * @param {string} [kind] The kind of track to enable (captions or subtitles).
          * @return {EnableTextTrackPromise}
@@ -1553,7 +1540,6 @@ var Player = function () {
         /**
          * Disable the currently-active text track.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {DisableTextTrackPromise}
          */
 
@@ -1572,7 +1558,6 @@ var Player = function () {
         /**
          * Pause the video if it’s playing.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {PausePromise}
          */
 
@@ -1594,7 +1579,6 @@ var Player = function () {
          * viewer has tapped on the play button in the player, however, you
          * will be able to use this function.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {PlayPromise}
          */
 
@@ -1613,7 +1597,6 @@ var Player = function () {
         /**
          * Return the player to its initial state.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {UnloadPromise}
          */
 
@@ -1621,6 +1604,34 @@ var Player = function () {
         key: 'unload',
         value: function unload() {
             return this.callMethod('unload');
+        }
+
+        /**
+         * Cleanup the player and remove it from the DOM
+         *
+         * It won't be usable and a new one should be constructed
+         *  in order to do any operations.
+         *
+         * @return {Promise}
+         */
+
+    }, {
+        key: 'destroy',
+        value: function destroy() {
+            var _this5 = this;
+
+            return new npo_src(function (resolve) {
+                readyMap.delete(_this5);
+                playerMap.delete(_this5.element);
+                if (_this5._originalElement) {
+                    playerMap.delete(_this5._originalElement);
+                    _this5._originalElement.removeAttribute('data-vimeo-initialized');
+                }
+                if (_this5.element && _this5.element.nodeName === 'IFRAME') {
+                    _this5.element.remove();
+                }
+                resolve();
+            });
         }
 
         /**
@@ -1634,7 +1645,6 @@ var Player = function () {
         /**
          * Get the autopause behavior for this player.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetAutopausePromise}
          */
 
@@ -1660,7 +1670,6 @@ var Player = function () {
          * for doing so, we recommend that you leave autopause set to the
          * default (`true`).
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {boolean} autopause
          * @return {SetAutopausePromise}
          */
@@ -1680,7 +1689,6 @@ var Player = function () {
         /**
          * Get the color for this player.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetColorPromise}
          */
 
@@ -1706,7 +1714,6 @@ var Player = function () {
          * color may fail if the owner of the video has set their embed
          * preferences to force a specific color.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {string} color The hex or rgb color string to set.
          * @return {SetColorPromise}
          */
@@ -1736,7 +1743,6 @@ var Player = function () {
         /**
          * Get an array of the cue points added to the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetCuePointsPromise}
          */
 
@@ -1755,7 +1761,6 @@ var Player = function () {
         /**
          * Get the current playback position in seconds.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetCurrentTimePromise}
          */
 
@@ -1782,7 +1787,6 @@ var Player = function () {
          * to as close to that time as possible. The exact time will be the
          * fulfilled value of the promise.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {number} currentTime
          * @return {SetCurrentTimePromise}
          */
@@ -1804,7 +1808,6 @@ var Player = function () {
          * nearest second before playback begins, and to the nearest thousandth
          * of a second after playback begins.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetDurationPromise}
          */
 
@@ -1824,7 +1827,6 @@ var Player = function () {
          * Get the ended state of the video. The video has ended if
          * `currentTime === duration`.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetEndedPromise}
          */
 
@@ -1843,7 +1845,6 @@ var Player = function () {
         /**
          * Get the loop state of the player.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetLoopPromise}
          */
 
@@ -1863,7 +1864,6 @@ var Player = function () {
          * Set the loop state of the player. When set to `true`, the player
          * will start over immediately once playback ends.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {boolean} loop
          * @return {SetLoopPromise}
          */
@@ -1883,7 +1883,6 @@ var Player = function () {
         /**
          * Get the paused state of the player.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetLoopPromise}
          */
 
@@ -1891,6 +1890,46 @@ var Player = function () {
         key: 'getPaused',
         value: function getPaused() {
             return this.get('paused');
+        }
+
+        /**
+         * A promise to get the playback rate of the player.
+         *
+         * @promise GetPlaybackRatePromise
+         * @fulfill {number} The playback rate of the player on a scale from 0.5 to 2.
+         */
+        /**
+         * Get the playback rate of the player on a scale from `0.5` to `2`.
+         *
+         * @return {GetPlaybackRatePromise}
+         */
+
+    }, {
+        key: 'getPlaybackRate',
+        value: function getPlaybackRate() {
+            return this.get('playbackRate');
+        }
+
+        /**
+         * A promise to set the playbackrate of the player.
+         *
+         * @promise SetPlaybackRatePromise
+         * @fulfill {number} The playback rate was set.
+         * @reject {RangeError} The playback rate was less than 0.5 or greater than 2.
+         */
+        /**
+         * Set the playback rate of the player on a scale from `0.5` to `2`. When set
+         * via the API, the playback rate will not be synchronized to other
+         * players or stored as the viewer's preference.
+         *
+         * @param {number} playbackRate
+         * @return {SetPlaybackRatePromise}
+         */
+
+    }, {
+        key: 'setPlaybackRate',
+        value: function setPlaybackRate(playbackRate) {
+            return this.set('playbackRate', playbackRate);
         }
 
         /**
@@ -1902,7 +1941,6 @@ var Player = function () {
         /**
          * Get an array of the text tracks that exist for the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetTextTracksPromise}
          */
 
@@ -1921,7 +1959,6 @@ var Player = function () {
         /**
          * Get the `<iframe>` embed code for the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoEmbedCodePromise}
          */
 
@@ -1940,7 +1977,6 @@ var Player = function () {
         /**
          * Get the id of the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoIdPromise}
          */
 
@@ -1959,7 +1995,6 @@ var Player = function () {
         /**
          * Get the title of the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoTitlePromise}
          */
 
@@ -1979,7 +2014,6 @@ var Player = function () {
          * Get the native width of the currently‐playing video. The width of
          * the highest‐resolution available will be used before playback begins.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoWidthPromise}
          */
 
@@ -1999,7 +2033,6 @@ var Player = function () {
          * Get the native height of the currently‐playing video. The height of
          * the highest‐resolution available will be used before playback begins.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoHeightPromise}
          */
 
@@ -2019,7 +2052,6 @@ var Player = function () {
         /**
          * Get the vimeo.com url for the video.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVideoUrlPromise}
          */
 
@@ -2041,7 +2073,6 @@ var Player = function () {
          * Most mobile devices do not support an independent volume from the
          * system volume. In those cases, this method will always return `1`.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @return {GetVolumePromise}
          */
 
@@ -2066,7 +2097,6 @@ var Player = function () {
          * Most mobile devices do not support setting the volume. An error will
          * *not* be triggered in that situation.
          *
-         * @author Brad Dougherty <brad@vimeo.com>
          * @param {number} volume
          * @return {SetVolumePromise}
          */
@@ -2081,16 +2111,287 @@ var Player = function () {
     return Player;
 }();
 
-initializeEmbeds();
-resizeEmbeds();
+// Setup embed only if this is not a node environment
+// and if there is no existing Vimeo Player object
+
+
+if (!isNode && window.Vimeo && !window.Vimeo.Player) {
+    initializeEmbeds();
+    resizeEmbeds();
+}
 
 return Player;
 
 })));
 
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],2:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
+},{"timers":2}],2:[function(require,module,exports){
+(function (setImmediate,clearImmediate){
+var nextTick = require('process/browser.js').nextTick;
+var apply = Function.prototype.apply;
+var slice = Array.prototype.slice;
+var immediateIds = {};
+var nextImmediateId = 0;
+
+// DOM APIs, for completeness
+
+exports.setTimeout = function() {
+  return new Timeout(apply.call(setTimeout, window, arguments), clearTimeout);
+};
+exports.setInterval = function() {
+  return new Timeout(apply.call(setInterval, window, arguments), clearInterval);
+};
+exports.clearTimeout =
+exports.clearInterval = function(timeout) { timeout.close(); };
+
+function Timeout(id, clearFn) {
+  this._id = id;
+  this._clearFn = clearFn;
+}
+Timeout.prototype.unref = Timeout.prototype.ref = function() {};
+Timeout.prototype.close = function() {
+  this._clearFn.call(window, this._id);
+};
+
+// Does not start the time, just sets up the members needed.
+exports.enroll = function(item, msecs) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = msecs;
+};
+
+exports.unenroll = function(item) {
+  clearTimeout(item._idleTimeoutId);
+  item._idleTimeout = -1;
+};
+
+exports._unrefActive = exports.active = function(item) {
+  clearTimeout(item._idleTimeoutId);
+
+  var msecs = item._idleTimeout;
+  if (msecs >= 0) {
+    item._idleTimeoutId = setTimeout(function onTimeout() {
+      if (item._onTimeout)
+        item._onTimeout();
+    }, msecs);
+  }
+};
+
+// That's not how node.js implements it but the exposed api is the same.
+exports.setImmediate = typeof setImmediate === "function" ? setImmediate : function(fn) {
+  var id = nextImmediateId++;
+  var args = arguments.length < 2 ? false : slice.call(arguments, 1);
+
+  immediateIds[id] = true;
+
+  nextTick(function onNextTick() {
+    if (immediateIds[id]) {
+      // fn.call() is faster so we optimize for the common use-case
+      // @see http://jsperf.com/call-apply-segu
+      if (args) {
+        fn.apply(null, args);
+      } else {
+        fn.call(null);
+      }
+      // Prevent ids from leaking
+      exports.clearImmediate(id);
+    }
+  });
+
+  return id;
+};
+
+exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate : function(id) {
+  delete immediateIds[id];
+};
+}).call(this,require("timers").setImmediate,require("timers").clearImmediate)
+},{"process/browser.js":3,"timers":2}],3:[function(require,module,exports){
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],4:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2221,7 +2522,10 @@ var Vimeo = function (_Tech) {
         _this2.trigger(e);
       });
     });
-
+    this._player.on('loaded', function () {
+      _this2.trigger('loadstart');
+      _this2.trigger('loadedmetadata');
+    });
     this._player.on('pause', function () {
       return _this2._vimeoState.playing = false;
     });
@@ -2271,7 +2575,7 @@ var Vimeo = function (_Tech) {
   };
 
   Vimeo.prototype.createEl = function createEl() {
-    var div = _video2.default.createEl('div', {
+    var div = _video2.default.dom.createEl('div', {
       id: this.options_.techId
     });
 
@@ -2323,6 +2627,7 @@ var Vimeo = function (_Tech) {
 
   Vimeo.prototype.buffered = function buffered() {
     var progress = this._vimeoState.progress;
+
     return _video2.default.createTimeRange(0, progress.buffered);
   };
 
@@ -2335,7 +2640,7 @@ var Vimeo = function (_Tech) {
   };
 
   Vimeo.prototype.play = function play() {
-    this._player.play();
+    return this._player.play();
   };
 
   Vimeo.prototype.muted = function muted() {
@@ -2345,6 +2650,12 @@ var Vimeo = function (_Tech) {
   Vimeo.prototype.ended = function ended() {
     return this._vimeoState.ended;
   };
+
+  Vimeo.prototype.preload = function preload() {};
+
+  Vimeo.prototype.load = function load() {};
+
+  Vimeo.prototype.reset = function reset() {};
 
   // Vimeo does has a mute API and native controls aren't being used,
   // so setMuted doesn't really make sense and shouldn't be called.
@@ -2416,5 +2727,5 @@ Vimeo.VERSION = '0.0.1';
 
 exports.default = Vimeo;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"@vimeo/player":1}]},{},[2])(2)
+},{"@vimeo/player":1}]},{},[4])(4)
 });
