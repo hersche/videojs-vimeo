@@ -110,7 +110,10 @@ class Vimeo extends Tech {
         this.trigger(e);
       });
     });
-
+    this._player.on('loaded', ()=> {
+      this.trigger('loadstart');
+      this.trigger('loadedmetadata');
+    });
     this._player.on('pause', () => this._vimeoState.playing = false);
     this._player.on('play', () => {
       this._vimeoState.playing = true;
@@ -221,6 +224,10 @@ class Vimeo extends Tech {
   ended() {
     return this._vimeoState.ended;
   }
+
+  preload() {}
+  load() {}
+  reset() {}
 
   // Vimeo does has a mute API and native controls aren't being used,
   // so setMuted doesn't really make sense and shouldn't be called.
